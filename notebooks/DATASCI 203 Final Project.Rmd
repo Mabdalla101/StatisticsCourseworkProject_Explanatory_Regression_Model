@@ -1,0 +1,149 @@
+---
+title: "Understanding the Primary Socioeconomic Drivers of State Test Scores, Grades 3-8"
+author: "Mohammed Abdalla, Miriam Luka, Jayant Kumar, Kashif Awan"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Introduction
+
+Standardized test scores are one of the statistics available for nearly every public school district in the country, making them a common measure to assess whether our education system is serving students well. Recent reporting on a generation-long decline in reading scores, paired with proposed cuts to federal Department of Education funding, has drawn increased attention to the matter of where funding should be allocated to improve test scores and more generally educational outcomes. Before discussing funding allocation, policymakers require a clear understanding of the data itself and the potential shared characteristics among school districts with lower test scores.
+
+Socioeconomic status is a characteristic consistently mentioned in this conversation. Built off the correlations indicating that districts with higher incidents of poverty, and less educational attainment among adults tend to have lower-performing school test scores. But socioeconomic status bundles together several distinct conditions: income, education, employment, family structure, and use of public assistance (such as SNAP benefits utilization, etc.). Understanding and quantifying the relationship between socioeconomic status indicators and district state test scores with increased specificity is crucial when attempting to improve outcomes. A policymaker deciding how to allocate funding should understand not just that socioeconomic status is important, but which dimensions of it are most strongly associated with test performance, and how large those associations are in practice.
+
+We approach this question as data consultants for a coalition of school boards seeking to better understand the primary drivers of achievement gaps in their districts. Our research question is purely descriptive: what is the relationship between district-level socioeconomic characteristics and average student test performance across U.S. school districts? We do not claim that any of these characteristics cause test scores to rise or fall, only that describing the strength and shape of these relationships is a necessary first step before anyone can design a targeted, evidence-based funding policy or a causal study of one.
+
+# Data
+
+## Source and Provenance
+
+We use the Stanford Education Data Archive (SEDA), version 6.0 (Reardon et al., Stanford University), a publicly available dataset built from over 480 million standardized test records submitted by U.S. states under federal reporting requirements. SEDA converts each state's own assessments onto a common scale by linking them to the National Assessment of Educational Progress (NAEP), producing test scores that are comparable across states and years. We combine two SEDA files, both at the school-district level:
+
+- **`seda_geodist_annual_cs_6.0`** (achievement): average math and reading/language-arts performance for grades 3–8,
+
+- **`seda_cov_geodist_annual_6.0`** (covariates): district-level socioeconomic and demographic characteristics compiled from the American Community Survey and other federal sources.
+
+For additional information regarding the methodology the SEDA utilized in collecting this data, as well as the files themselves, please visit their website at: https://edopportunity.org/opportunity/data/downloads/#documentation-6
+
+## Data Wrangling
+
+From the achievement file, we keep only the `all students` aggregate (filtering on col `subcat` = `all`), which reports the achievement data in aggregate instead of by subgroups such as race or gender. Furthermore for both our achievement file and covariate file we will filter for `year` = **2018**, as this is the most recent pre-pandemic year available to completely avoid any issues that may have resulted from COVID. Resulting in each row representing one achievement observation per district for 2018. We then join our data to the 2018 covariate file using the district identifier `sedalea`, which is common to both files. Districts that appear in only one file are dropped via an inner join, and rows missing any of our six predictor variables are also dropped. 
+
+Before dropping missing values, the 2018 achievement file has 11,139 district-level **all students** observations and the 2018 covariate file has 12,690. Additionally 324 districts (roughly ~2.5%) are missing covariate data entirely. To stay consistent with SEDA methodology and to preserve only complete data, we've opted to drop mismatches such that we primarily use the covariate file to supplement our achievement file data, and to drop NAs, resulting in a population dataset of 11044 observations, one per school district. As discussed in our previous proposal, districts are not drawn independently, districts neighboring each other likely have similar labor markets, demographics, and state funding resources which would naturally result in iid being violated. We will address this directly with a random sampling method rather than fitting on the full population with a resulting sample size of 400.
+
+## Operationalization
+
+**Outcome (Y):** District test performance, `cs_mn_avg_ol` — a standardized effect size measuring how far a district's average test score falls from the national mean, in national standard-deviation units. It is metric and pools math and reading/language-arts performance across grades 3–8.
+
+**Predictors (X), all district-level, metric:**
+
+| Variable | Column | Definition |
+|---|---|---|
+| Income | `lninc50all` | Log of median household income |
+| Educational attainment | `baplusall` | % of adults with a bachelor's degree or higher |
+| Poverty | `povertyall` | % of residents below the poverty line |
+| Unemployment | `unempall` | % unemployment rate |
+| SNAP receipt | `snapall` | % of households receiving SNAP benefits |
+| Single motherhood | `single_momall` | % of households headed by a single mother |
+
+
+# Data Prep
+
+```{r dataprep, message=FALSE, warning=FALSE, results='hide'}
+library(dplyr)
+library(readr)
+library(tidyr)
+
+# Load raw SEDA files
+seda_achieve <- read_csv("/Users/mohammedabdalla/Downloads/seda_geodist_annual_cs_6.0.csv")
+seda_cov     <- read_csv("/Users/mohammedabdalla/Downloads/seda_cov_geodist_annual_6.0.csv")
+
+# Achievement file: district-level "all students" estimate, 2018 only
+achieve_2018 <- seda_achieve %>%
+  filter(year == 2018, subcat == "all", subgroup == "all", gap == 0) 
+
+# Covariate file: 2018 socioeconomic predictors
+cov_2018 <- seda_cov %>%
+  filter(year == 2018) %>%
+  select(sedalea, lninc50all, baplusall, povertyall,
+         unempall, snapall, single_momall, totenrl, perwht, 
+         perblk, perhsp, perasn, pernam)
+
+# Join achievement and covariates on district id (sedalea)
+seda_population_file_2018 <- achieve_2018 %>%
+  inner_join(cov_2018, by = "sedalea")  %>%
+  drop_na()
+
+nrow(seda_population_file_2018)
+```
+
+
+# Sampling Methodology
+
+``` {r sampling, message=FALSE, warning=FALSE, results='hide' }
+library(tidyverse)
+set.seed(42) # answer of the universe
+TARGET_N <- 1000
+EXPLORE_FRAC <- 0.30
+# (subgroup == "all", gap == FALSE, year 2018).
+pop <- seda_population_file_2018
+id_vars <- c("sedalea", "sedaleaname", "stateabb", "fips")
+outcome <- "cs_mn_avg_ol"
+outcome_se <- "cs_mn_avg_ol_se"
+ses_comp <- c(
+  "baplusall",
+  "povertyall",
+  "unempall",
+  "snapall",
+  "single_momall",
+  "lninc50all"
+)
+enrollment <- "totenrl"
+race <- c("perwht", "perblk", "perhsp", "perasn", "pernam")
+analysis_vars <- c(outcome, ses_comp, enrollment, race)
+frame <- pop %>%
+  select(all_of(c(id_vars, outcome_se, analysis_vars)))
+n_start <- nrow(frame)
+frame_clean <- frame %>%
+  filter(totenrl > 0) %>%
+  drop_na(all_of(analysis_vars))
+
+n_dropped <- n_start - nrow(frame_clean)
+cat(sprintf(
+  "Frame: %d districts -> %d after cleaning (dropped %d, %.1f%%)\n",
+  n_start, nrow(frame_clean), n_dropped, 100 * n_dropped / n_start
+))
+# validate its IID
+stopifnot(TARGET_N <= nrow(frame_clean))
+sample_df <- frame_clean %>%
+  slice_sample(n = TARGET_N) %>%
+  mutate(split = if_else(row_number() <= floor(EXPLORE_FRAC * TARGET_N),
+    "exploration", "confirmation"
+  ))
+run_checks <- function(df) {
+  results <- c()
+  stopifnot(nrow(df) == TARGET_N)
+  results <- c(results, sprintf("PASS  Test 1: sample has %d rows", nrow(df)))
+  stopifnot(!any(is.na(df %>% select(all_of(analysis_vars)))))
+  results <- c(results, "PASS  Test 2: no NAs in the analysis variables")
+  stopifnot(all(df$totenrl > 0))
+  results <- c(results, "PASS  Test 3: every district has totenrl > 0")
+  stopifnot(n_distinct(df$sedalea) == nrow(df))
+  results <- c(results, "PASS  Test 4: all sedalea district ids are unique")
+  n_expl <- sum(df$split == "exploration")
+  n_conf <- sum(df$split == "confirmation")
+  stopifnot(n_expl + n_conf == nrow(df))
+  results <- c(results, sprintf(
+    "PASS  Test 5: split adds up (exploration=%d, confirmation=%d)",
+    n_expl, n_conf
+  ))
+  cat(paste(results, collapse = "\n"), "\n")
+  cat(sprintf("\n%d/5 checks passed.\n", length(results)))
+}
+run_checks(sample_df)
+cat("Done! All checks successfully pass for our iid sample of size = 400")
+```
