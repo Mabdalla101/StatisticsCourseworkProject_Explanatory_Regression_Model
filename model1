@@ -1,0 +1,136 @@
+---
+output:
+  reprex::reprex_document:
+    venue: "gh"
+    advertise: FALSE
+    session_info: TRUE
+    style: TRUE
+    comment: "#;-)"
+    tidyverse_quiet: FALSE
+    std_out_err: TRUE
+knit: reprex::reprex_render
+---
+
+This template demonstrates many of the bells and whistles of the `reprex::reprex_document()` output format. The YAML sets many options to non-default values, such as using `#;-)` as the comment in front of output.
+
+## Code style
+
+Since `style` is `TRUE`, this difficult-to-read code (look at the `.Rmd` source file) will be restyled according to the Tidyverse style guide when it's rendered. Whitespace rationing is not in effect!
+
+```{r}
+x <- 1
+y <- 2
+z <- x + y
+z
+```
+
+## Quiet tidyverse
+
+The tidyverse meta-package is quite chatty at startup, which can be very useful in exploratory, interactive work. It is often less useful in a reprex, so by default, we suppress this.
+
+However, when `tidyverse_quiet` is `FALSE`, the rendered result will include a tidyverse startup message about package versions and function masking.
+
+```{r, eval = requireNamespace("tidyverse", quietly = TRUE)}
+library(tidyverse)
+```
+
+## Chunks in languages other than R
+
+Remember: knitr supports many other languages than R, so you can reprex bits of code in Python, Ruby, Julia, C++, SQL, and more. Note that, in many cases, this still requires that you have the relevant external interpreter installed.
+
+Let's try Python!
+
+```{python, eval = Sys.which("python") != "", python.reticulate = requireNamespace("reticulate", quietly = TRUE)}
+x = 'hello, python world!'
+print(x.split(' '))
+```
+
+And bash!
+
+```{bash, eval = Sys.which("bash") != ""}
+echo "Hello Bash!";
+pwd;
+ls | head;
+```
+
+Write a function in C++, use Rcpp to wrap it and ...
+
+```{Rcpp, eval = requireNamespace("Rcpp", quietly = TRUE)}
+#include <Rcpp.h>
+using namespace Rcpp;
+
+// [[Rcpp::export]]
+NumericVector timesTwo(NumericVector x) {
+  return x * 2;
+}
+```
+
+then immediately call your C++ function from R!
+
+```{r, eval = requireNamespace("Rcpp", quietly = TRUE)}
+timesTwo(1:4)
+```
+
+## Standard output and error
+
+Some output that you see in an interactive session is not actually captured by rmarkdown, when that same code is executed in the context of an `.Rmd` document. When `std_out_err` is `TRUE`, `reprex::reprex_render()` uses a feature of `callr:r()` to capture such output and then injects it into the rendered result.
+
+Look for this output in a special section of the rendered document (and notice that it does not appear right here).
+
+```{r}
+system2("echo", args = "Output that would normally be lost")
+```
+
+## Session info
+
+Because `session_info` is `TRUE`, the rendered result includes session info, even though no such code is included here in the source document. 
+
+
+
+seda_sample <- read_csv("~/Downloads/datasci-203-26-section6-summer-C-main/data/processed/seda_2018_sample.csv", show_col_types = FALSE)
+
+ses_vars <- c("cs_mn_avg_ol", "povertyall", "lninc50all", "baplusall",
+              "unempall", "snapall", "single_momall")
+
+# 6 districts are missing all SES covariates; drop before splitting
+model_df <- seda_sample %>% filter(if_all(all_of(ses_vars), ~ !is.na(.)))
+cat(sprintf("Districts: %d raw -> %d after dropping missing predictors\n",
+            nrow(seda_sample), nrow(model_df)))
+
+set.seed(42)
+n <- nrow(model_df)
+explore_n <- floor(0.30 * n)
+shuffled <- sample(seq_len(n))
+model_df$split <- "confirmation"
+model_df$split[shuffled[1:explore_n]] <- "exploration"
+
+# stargazer needs a plain data.frame, not a tibble, or it can throw
+# "missing value where TRUE/FALSE needed" during table formatting
+explore <- as.data.frame(model_df %>% filter(split == "exploration"))
+cat(sprintf("Exploration set: %d districts\n", nrow(explore)))[8:16 PM]```{r modeling-fit}
+m1 <- lm(cs_mn_avg_ol ~ povertyall, data = explore)
+
+m2 <- lm(cs_mn_avg_ol ~ povertyall + lninc50all + baplusall +
+  unempall + snapall + single_momall, data = explore)
+
+m3 <- lm(cs_mn_avg_ol ~ povertyall + I(povertyall^2) + lninc50all +
+  baplusall + unempall + snapall + single_momall, data = explore)
+
+# Heteroskedasticity-robust standard errors
+robust_se <- function(model) sqrt(diag(vcovHC(model)))
+```
+
+```{r modeling-table, results='asis'}
+#| tbl-cap: Regression Results.
+stargazer(m1, m2, m3,
+          header = FALSE,
+          se = list(robust_se(m1), robust_se(m2), robust_se(m3)),
+          type = if (isTRUE(knitr::is_latex_output())) "latex" else "html",
+          dep.var.labels = "Test Performance (SD units from national mean)",
+          covariate.labels = c("Poverty Rate", "Poverty Rate Squared", "Log Median Income",
+                               "% Bachelor's Degree+", "Unemployment Rate",
+                               "% SNAP Recipients", "% Single-Mother Households"),
+          digits = 2,
+          omit.stat = c("f", "ser"),
+          star.cutoffs = c(0.05, 0.01, 0.001)
+)

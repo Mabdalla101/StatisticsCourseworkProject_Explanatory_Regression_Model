@@ -159,3 +159,64 @@ run_checks <- function(df) {
 run_checks(sample_df)
 cat("Done! All checks successfully pass for our iid sample of size = 400")
 ```
+
+# Model Building
+
+All specification decisions below are made on the exploration set only. The
+confirmation set created in the sampling chunk above is left untouched until
+final estimation, so nothing we learn here can leak into the reported results.
+
+We fit three nested specifications. Model 1 regresses test performance on the
+poverty rate alone, giving a baseline for the single socioeconomic measure most
+often cited in policy discussion. Model 2 adds the remaining five socioeconomic
+predictors, which lets us see how much of the poverty association is shared with
+income, educational attainment, employment, SNAP receipt, and family structure.
+Model 3 adds a squared poverty term to test whether the relationship bends at
+higher poverty levels rather than holding to a constant slope.
+
+Because district-level socioeconomic data of this kind routinely shows
+non-constant error variance, all standard errors are heteroskedasticity-robust
+(HC sandwich estimator) rather than classical.
+
+```{r modeling-setup, message=FALSE, warning=FALSE}
+library(lmtest)
+library(sandwich)
+library(stargazer)
+
+# sample_df and its exploration/confirmation split come from the sampling chunk
+# above. stargazer needs a plain data.frame, not a tibble, or it can throw
+# "missing value where TRUE/FALSE needed" during table formatting.
+explore <- as.data.frame(sample_df %>% filter(split == "exploration"))
+cat(sprintf("Exploration set: %d districts\n", nrow(explore)))
+```
+
+```{r modeling-fit}
+m1 <- lm(cs_mn_avg_ol ~ povertyall, data = explore)
+
+m2 <- lm(cs_mn_avg_ol ~ povertyall + lninc50all + baplusall +
+  unempall + snapall + single_momall, data = explore)
+
+m3 <- lm(cs_mn_avg_ol ~ povertyall + I(povertyall^2) + lninc50all +
+  baplusall + unempall + snapall + single_momall, data = explore)
+
+# Heteroskedasticity-robust standard errors
+robust_se <- function(model) sqrt(diag(vcovHC(model)))
+```
+
+```{r modeling-table, results='asis', echo=FALSE}
+stargazer(m1, m2, m3,
+  header = FALSE,
+  title = "Regression Results (Exploration Set)",
+  se = list(robust_se(m1), robust_se(m2), robust_se(m3)),
+  type = if (isTRUE(knitr::is_latex_output())) "latex" else "html",
+  dep.var.labels = "Test Performance (SD units from national mean)",
+  covariate.labels = c(
+    "Poverty Rate", "Poverty Rate Squared", "Log Median Income",
+    "% Bachelor's Degree+", "Unemployment Rate",
+    "% SNAP Recipients", "% Single-Mother Households"
+  ),
+  digits = 2,
+  omit.stat = c("f", "ser"),
+  star.cutoffs = c(0.05, 0.01, 0.001)
+)
+```
