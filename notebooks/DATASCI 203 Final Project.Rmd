@@ -6,6 +6,10 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+# This .Rmd lives in notebooks/, but all data paths below are written relative
+
+knitr::opts_knit$set(root.dir = rprojroot::find_root(rprojroot::is_git_root))
 ```
 
 
@@ -33,7 +37,7 @@ For additional information regarding the methodology the SEDA utilized in collec
 
 From the achievement file, we keep only the `all students` aggregate (filtering on col `subcat` = `all`), which reports the achievement data in aggregate instead of by subgroups such as race or gender. Furthermore for both our achievement file and covariate file we will filter for `year` = **2018**, as this is the most recent pre-pandemic year available to completely avoid any issues that may have resulted from COVID. Resulting in each row representing one achievement observation per district for 2018. We then join our data to the 2018 covariate file using the district identifier `sedalea`, which is common to both files. Districts that appear in only one file are dropped via an inner join, and rows missing any of our six predictor variables are also dropped. 
 
-Before dropping missing values, the 2018 achievement file has 11,139 district-level **all students** observations and the 2018 covariate file has 12,690. Additionally 324 districts (roughly ~2.5%) are missing covariate data entirely. To stay consistent with SEDA methodology and to preserve only complete data, we've opted to drop mismatches such that we primarily use the covariate file to supplement our achievement file data, and to drop NAs, resulting in a population dataset of 11044 observations, one per school district. As discussed in our previous proposal, districts are not drawn independently, districts neighboring each other likely have similar labor markets, demographics, and state funding resources which would naturally result in iid being violated. We will address this directly with a random sampling method rather than fitting on the full population with a resulting sample size of 400.
+Before dropping missing values, the 2018 achievement file has 11,139 district-level **all students** observations and the 2018 covariate file has 12,690. Additionally 324 districts (roughly ~2.5%) are missing covariate data entirely. To stay consistent with SEDA methodology and to preserve only complete data, we've opted to drop mismatches such that we primarily use the covariate file to supplement our achievement file data, and to drop NAs, resulting in a population dataset of 11044 observations, one per school district. As discussed in our previous proposal, districts are not drawn independently, districts neighboring each other likely have similar labor markets, demographics, and state funding resources which would naturally result in iid being violated. We will address this directly with a random sampling method rather than fitting on the full population with a resulting sample size of 1,000.
 
 ## Operationalization
 
@@ -58,9 +62,13 @@ library(dplyr)
 library(readr)
 library(tidyr)
 
-# Load raw SEDA files
-seda_achieve <- read_csv("/Users/mohammedabdalla/Downloads/seda_geodist_annual_cs_6.0.csv")
-seda_cov <- read_csv("/Users/mohammedabdalla/Downloads/seda_cov_geodist_annual_6.0.csv")
+# Load raw SEDA files (checked into the repo, already subset to 2018)
+seda_achieve <- read_csv("data/raw/seda_geodist_2018.csv",
+  show_col_types = FALSE
+)
+seda_cov <- read_csv("data/raw/seda_cov_geodist_2018.csv",
+  show_col_types = FALSE
+)
 
 # Achievement file: district-level "all students" estimate, 2018 only
 achieve_2018 <- seda_achieve %>%
@@ -157,7 +165,10 @@ run_checks <- function(df) {
   cat(sprintf("\n%d/5 checks passed.\n", length(results)))
 }
 run_checks(sample_df)
-cat("Done! All checks successfully pass for our iid sample of size = 400")
+cat(sprintf(
+  "Done! All checks successfully pass for our iid sample of size = %d\n",
+  TARGET_N
+))
 ```
 
 # Operationalization and data visualisation
@@ -585,6 +596,11 @@ robust_se <- function(model) sqrt(diag(vcovHC(model)))
 ```
 
 ```{r modeling-table, results='asis', echo=FALSE}
+# stargazer emits its table verbatim (results='asis'), so it bypasses pandoc's
+# escaping. A bare "%" in a label would start a LaTeX comment and silently
+# swallow the rest of that table row, so escape it for latex output.
+pct <- if (isTRUE(knitr::is_latex_output())) "\\%" else "%"
+
 stargazer(m1, m2, m3,
   header = FALSE,
   title = "Regression Results (Exploration Set)",
@@ -593,8 +609,8 @@ stargazer(m1, m2, m3,
   dep.var.labels = "Test Performance (SD units from national mean)",
   covariate.labels = c(
     "Poverty Rate", "Poverty Rate Squared", "Log Median Income",
-    "% Bachelor's Degree+", "Unemployment Rate",
-    "% SNAP Recipients", "% Single-Mother Households"
+    paste(pct, "Bachelor's Degree+"), "Unemployment Rate",
+    paste(pct, "SNAP Recipients"), paste(pct, "Single-Mother Households")
   ),
   digits = 2,
   omit.stat = c("f", "ser"),
