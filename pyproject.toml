@@ -9,6 +9,7 @@ dependencies = [
     "ipykernel>=7.1.0",
     "numpy>=2.4.0",
     "pandas>=2.3.3",
+    "pandoc>=2.4",
     "pypdf>=6.14.2",
     "pypdf2>=3.0.1",
 ]

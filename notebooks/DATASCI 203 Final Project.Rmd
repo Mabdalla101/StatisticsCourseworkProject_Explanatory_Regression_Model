@@ -6,6 +6,11 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+# This .Rmd lives in notebooks/, but all data paths below are written relative
+# to the project root. Without this, knitr would resolve them against
+# notebooks/ and every read_csv() would fail.
+knitr::opts_knit$set(root.dir = rprojroot::find_root(rprojroot::is_git_root))
 ```
 
 
@@ -58,9 +63,13 @@ library(dplyr)
 library(readr)
 library(tidyr)
 
-# Load raw SEDA files
-seda_achieve <- read_csv("/Users/mohammedabdalla/Downloads/seda_geodist_annual_cs_6.0.csv")
-seda_cov <- read_csv("/Users/mohammedabdalla/Downloads/seda_cov_geodist_annual_6.0.csv")
+# Load raw SEDA files (checked into the repo, already subset to 2018)
+seda_achieve <- read_csv("data/raw/seda_geodist_2018.csv",
+  show_col_types = FALSE
+)
+seda_cov <- read_csv("data/raw/seda_cov_geodist_2018.csv",
+  show_col_types = FALSE
+)
 
 # Achievement file: district-level "all students" estimate, 2018 only
 achieve_2018 <- seda_achieve %>%
