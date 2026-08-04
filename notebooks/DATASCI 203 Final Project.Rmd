@@ -83,8 +83,8 @@ nrow(seda_population_file_2018)
 
 # Sampling Methodology
 
-From the 2018 SEDA, whose all-subgroups population file gives one record per U.S. public school district; we restrict the frame to districts with positive enrollment and complete data on the outcome (average test score composite), the six socioeconomic predictors, total enrollment, and the race and ethnicity shares. From that cleaned frame we draw a simple random sample of 1,000 districts without replacement under a fixed seed, which satisfies the IID assumption directly since every district is selected independently and with equal probability. We then split the sample before any analysis — 300 districts (30%) for exploration and 700 (70%) held for confirmation — so that variable selection and diagnostics never touch the data used for final estimation, and five automated checks verify sample size, missingness, positive enrollment, unique identifiers, and that the two splits sum to 1,000.  We used IID because we wanted to use the more interesting models from class.
-
+We dropped districts missing any analysis variable, leaving a clean population frame. From it we drew a simple random sample of 1,000 districts, every district had equal probability of selection and each draw was independent, satisfying IID by design. We fixed the random seed for reproducibility.
+Before any analysis, we split the sample into 300 exploration districts and 700 confirmation districts. All modeling decisions were made on the exploration set only; the confirmation set was not touched until final estimation. Five automated checks verified the sample was correctly constructed before proceeding.
 ``` {r sampling, message=FALSE, warning=FALSE, results='hide' }
 library(tidyverse)
 set.seed(42) # answer of the universe
