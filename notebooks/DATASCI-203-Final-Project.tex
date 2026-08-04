@@ -1,0 +1,563 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\documentclass[
+]{article}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{longtable,booktabs,array}
+\newcounter{none} % for unnumbered tables
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={Understanding the Primary Socioeconomic Drivers of State Test Scores{,} Grades 3-8},
+  pdfauthor={Mohammed Abdalla, Miriam Luka, Jayant Kumar, Kashif Awan},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{Understanding the Primary Socioeconomic Drivers of State Test
+Scores, Grades 3-8}
+\author{Mohammed Abdalla, Miriam Luka, Jayant Kumar, Kashif Awan}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}\label{introduction}
+
+Standardized test scores are one of the statistics available for nearly
+every public school district in the country, making them a common
+measure to assess whether our education system is serving students well.
+Recent reporting on a generation-long decline in reading scores, paired
+with proposed cuts to federal Department of Education funding, has drawn
+increased attention to the matter of where funding should be allocated
+to improve test scores and more generally educational outcomes. Before
+discussing funding allocation, policymakers require a clear
+understanding of the data itself and the potential shared
+characteristics among school districts with lower test scores.
+
+Socioeconomic status is a characteristic consistently mentioned in this
+conversation. Built off the correlations indicating that districts with
+higher incidents of poverty, and less educational attainment among
+adults tend to have lower-performing school test scores. But
+socioeconomic status bundles together several distinct conditions:
+income, education, employment, family structure, and use of public
+assistance (such as SNAP benefits utilization, etc.). Understanding and
+quantifying the relationship between socioeconomic status indicators and
+district state test scores with increased specificity is crucial when
+attempting to improve outcomes. A policymaker deciding how to allocate
+funding should understand not just that socioeconomic status is
+important, but which dimensions of it are most strongly associated with
+test performance, and how large those associations are in practice.
+
+We approach this question as data consultants for a coalition of school
+boards seeking to better understand the primary drivers of achievement
+gaps in their districts. Our research question is purely descriptive:
+what is the relationship between district-level socioeconomic
+characteristics and average student test performance across U.S. school
+districts? We do not claim that any of these characteristics cause test
+scores to rise or fall, only that describing the strength and shape of
+these relationships is a necessary first step before anyone can design a
+targeted, evidence-based funding policy or a causal study of one.
+
+\section{Data}\label{data}
+
+\subsection{Source and Provenance}\label{source-and-provenance}
+
+We use the Stanford Education Data Archive (SEDA), version 6.0 (Reardon
+et al., Stanford University), a publicly available dataset built from
+over 480 million standardized test records submitted by U.S. states
+under federal reporting requirements. SEDA converts each state's own
+assessments onto a common scale by linking them to the National
+Assessment of Educational Progress (NAEP), producing test scores that
+are comparable across states and years. We combine two SEDA files, both
+at the school-district level:
+
+\begin{itemize}
+\item
+  \textbf{\texttt{seda\_geodist\_annual\_cs\_6.0}} (achievement):
+  average math and reading/language-arts performance for grades 3--8,
+\item
+  \textbf{\texttt{seda\_cov\_geodist\_annual\_6.0}} (covariates):
+  district-level socioeconomic and demographic characteristics compiled
+  from the American Community Survey and other federal sources.
+\end{itemize}
+
+For additional information regarding the methodology the SEDA utilized
+in collecting this data, as well as the files themselves, please visit
+their website at:
+\url{https://edopportunity.org/opportunity/data/downloads/\#documentation-6}
+
+\subsection{Data Wrangling}\label{data-wrangling}
+
+From the achievement file, we keep only the \texttt{all\ students}
+aggregate (filtering on col \texttt{subcat} = \texttt{all}), which
+reports the achievement data in aggregate instead of by subgroups such
+as race or gender. Furthermore for both our achievement file and
+covariate file we will filter for \texttt{year} = \textbf{2018}, as this
+is the most recent pre-pandemic year available to completely avoid any
+issues that may have resulted from COVID. Resulting in each row
+representing one achievement observation per district for 2018. We then
+join our data to the 2018 covariate file using the district identifier
+\texttt{sedalea}, which is common to both files. Districts that appear
+in only one file are dropped via an inner join, and rows missing any of
+our six predictor variables are also dropped.
+
+Before dropping missing values, the 2018 achievement file has 11,139
+district-level \textbf{all students} observations and the 2018 covariate
+file has 12,690. The inner join drops \textbf{1,551 covariate districts
+(12.2\%)} that have no 2018 achievement estimate in any subgroup, which
+is SEDA's suppression rule for districts with too few tested students.
+The loss runs one way only: every district with an achievement estimate
+has a matching covariate record, so the join itself discards nothing
+from the achievement side. A further \textbf{95 matched districts} are
+missing one or more of our six socioeconomic predictors and are dropped
+as well, leaving a population dataset of \textbf{11,044} observations,
+one per school district. (For reference, 324 districts in the covariate
+file carry no socioeconomic data at all; 95 of those are among the
+11,139 that matched, and are the ones removed here.) As discussed in our
+previous proposal, districts are not drawn independently, districts
+neighboring each other likely have similar labor markets, demographics,
+and state funding resources which would naturally result in iid being
+violated. We will address this directly with a random sampling method
+rather than fitting on the full population with a resulting sample size
+of 1,000.
+
+\section{Data Prep}\label{data-prep}
+
+\section{Sampling Methodology}\label{sampling-methodology}
+
+From the 2018 SEDA, whose all-subgroups population file gives one record
+per U.S. public school district; we restrict the frame to districts with
+positive enrollment and complete data on the outcome (average test score
+composite), the six socioeconomic predictors, total enrollment, and the
+race and ethnicity shares. From that cleaned frame we draw a simple
+random sample of 1,000 districts without replacement under a fixed seed,
+which satisfies the IID assumption directly since every district is
+selected independently and with equal probability. We then split the
+sample before any analysis --- 300 districts (30\%) for exploration and
+700 (70\%) held for confirmation --- so that variable selection and
+diagnostics never touch the data used for final estimation, and five
+automated checks verify sample size, missingness, positive enrollment,
+unique identifiers, and that the two splits sum to 1,000. We used IID
+because we wanted to use the more interesting models from class.
+
+\section{Operationalization and data
+visualisation}\label{operationalization-and-data-visualisation}
+
+\section{Operationalization}\label{operationalization}
+
+Two concepts have to become variables: \emph{student achievement} and
+\emph{socioeconomic status}. Neither mapping is obvious, and both admit
+alternatives we rejected for stated reasons.
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Variable
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Column
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Definition
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Outcome (Y)} & Test performance & \texttt{cs\_mn\_avg\_ol} &
+District mean score, math and reading, grades 3--8, in national SD
+units \\
+\textbf{Predictors (X)} & Income & \texttt{lninc50all} & Log of median
+household income \\
+& Educational attainment & \texttt{baplusall} & \% of adults with a
+bachelor's degree or higher \\
+& Poverty & \texttt{povertyall} & \% of residents below the poverty
+line \\
+& Unemployment & \texttt{unempall} & \% unemployment rate \\
+& SNAP receipt & \texttt{snapall} & \% of households receiving SNAP
+benefits \\
+& Single motherhood & \texttt{single\_momall} & \% of households headed
+by a single mother \\
+\end{longtable}
+}
+
+\subsection{The outcome: district test
+performance}\label{the-outcome-district-test-performance}
+
+SEDA offers two candidate outcome columns. We use
+\texttt{cs\_mn\_avg\_ol} (the ordinary least-squares estimate) rather
+than \texttt{cs\_mn\_avg\_eb} (an empirical-Bayes estimate that shrinks
+small districts toward the state mean). Shrinkage would improve
+precision but at the cost of \emph{deliberately} pulling small districts
+toward a common value exactly the between-district variation we are
+trying to describe. For a descriptive study the unshrunken estimate is
+the honest choice.
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5139}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.0972}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3889}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Statistic
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Value
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Reference
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Districts & 300 & -- \\
+Distinct values & 300 & 300 if no ties \\
+Districts within 0.05 of the minimum & 1 & high value = floor effect \\
+Districts within 0.05 of the maximum & 3 & high value = ceiling
+effect \\
+Mean & -0.005 & -- \\
+SD & 0.380 & -- \\
+Min & -1.112 & -- \\
+25th pct & -0.265 & -- \\
+Median & -0.027 & -- \\
+75th pct & 0.230 & -- \\
+Max & 1.134 & -- \\
+Skewness & 0.193 & 0 if symmetric \\
+Kurtosis & 3.210 & 3 if normal \\
+\end{longtable}
+}
+
+The table shows the variable needs no transformation. All 300 districts
+have a distinct score and none pile up at either extreme, so nothing is
+censored. Skewness 0.19 and kurtosis 3.21 sit near their symmetric and
+normal reference values. Symmetry is not an OLS requirement the
+large-sample model assumes nothing about the marginal distribution of
+\(Y\) but it does mean nothing suggests the outcome behaves
+multiplicatively, so \textbf{we leave \(Y\) untransformed}. The scale is
+already interpretable: a coefficient reads directly as a change in
+standard deviations.
+
+One limitation to state plainly. \texttt{cs\_mn\_avg\_ol} is an
+\emph{estimate}, and SEDA publishes a standard error for each district.
+About 1.9\% of the outcome's variance is measurement error rather than
+genuine difference between districts, and that error is concentrated in
+the smallest districts (the correlation between a district's standard
+error and its log enrolment is -0.79).
+
+\subsection{The predictors: socioeconomic status as six measures, not
+one
+index}\label{the-predictors-socioeconomic-status-as-six-measures-not-one-index}
+
+Socioeconomic status could be operationalised as a single composite SEDA
+ships one, \texttt{sesall}. We deliberately do not use it. The research
+question asks \emph{which dimensions} of socioeconomic status carry the
+most weight, and a composite answers that question by erasing it. So we
+keep six separate measures: log median income, adult bachelor's-degree
+share, poverty rate, unemployment, SNAP receipt, and single-mother
+household share.
+
+That choice has a cost, and it is worth quantifying rather than
+glossing.
+
+\begin{longtable}[]{@{}lr@{}}
+\caption{Variance inflation factors, all six predictors entered
+together.}\tabularnewline
+\toprule\noalign{}
+Variable & VIF \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+Variable & VIF \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Households below the poverty line (\%) & 6.15 \\
+Log median household income & 6.11 \\
+Households receiving SNAP (\%) & 4.81 \\
+Adults with a bachelor's degree or higher (\%) & 2.98 \\
+Households headed by a single mother (\%) & 2.72 \\
+Unemployment rate (\%) & 1.89 \\
+\end{longtable}
+
+The six measures overlap heavily: poverty correlates with SNAP receipt
+at 0.85 and with log income at -0.82. The variance inflation factors
+show the consequence, and two predictors make it concrete. Fitted alone,
+SNAP receipt carries a slope of -3.5 and log income 0.82, both
+significant below 0.001. Entered alongside the other four, SNAP
+\textbf{flips sign} to 0.2 (p = 0.64) while income collapses to 0.03 (p
+= 0.8).
+
+Neither variable has stopped mattering; each has been absorbed by its
+correlates. We therefore \textbf{exclude SNAP receipt and log median
+income} from the preferred specification not because they are
+unimportant, but because their coefficients in a six-predictor model
+would not mean what a reader would take them to mean. Poverty is
+retained over SNAP because it is the more widely understood measure;
+education and poverty together carry most of what income would have
+contributed.
+
+\subsection{Observations removed}\label{observations-removed}
+
+The counts and reasons for every cleaning stage are given in the Data
+Wrangling section above; the drop that matters is the \textbf{1,551
+districts SEDA suppressed} for having too few tested students, plus a
+further 95 missing one or more covariates. Because SEDA still publishes
+covariates for the suppressed districts, we can check whether that loss
+is systematic rather than assuming it. It is, but not in the direction
+one would guess. Suppressed districts are genuinely smaller --- median
+enrolment 391 against 561, and markedly so at the lower quartile --- and
+somewhat more rural (59.6\% against 52.8\%). But they are \textbf{not}
+poorer or less educated: mean poverty is 12.1\% against 12.7\%, and the
+bachelor's-or-higher share 28.3\% against 24.3\%. The scope condition is
+therefore narrower than a vague caveat would suggest: \textbf{our
+results describe districts large enough for SEDA to publish a score},
+and what is missing is very small, somewhat rural districts rather than
+a systematically disadvantaged tail.
+
+\section{The relationship between district poverty and test
+performance}\label{the-relationship-between-district-poverty-and-test-performance}
+
+This is the report's central exhibit: the outcome plotted against the
+single predictor that carries most of the story, with the fitted model's
+predictions overlaid.
+
+\begin{figure}
+\centering
+\pandocbounded{\includegraphics[keepaspectratio,alt={District poverty and average test performance, 300 randomly sampled U.S. school districts, 2018. Each point is one district. The solid line is the fitted relationship from a model of test score on log poverty rate; the shaded band is its 95\% confidence interval. Districts are coloured by community type. The relationship is steep among low-poverty districts and flattens as poverty rises.}]{/Users/macandkash/Coding/dataci203-Final/datasci-203-26-section6-summer-C/notebooks/DATASCI-203-Final-Project_files/40fbf242a0d9343802faa4e95e25370e373131c9.pdf}}
+\caption{District poverty and average test performance, 300 randomly
+sampled U.S. school districts, 2018. Each point is one district. The
+solid line is the fitted relationship from a model of test score on log
+poverty rate; the shaded band is its 95\% confidence interval. Districts
+are coloured by community type. The relationship is steep among
+low-poverty districts and flattens as poverty rises.}
+\end{figure}
+
+the figure below displays all 300 sampled districts. The relationship is
+strongly negative but plainly \textbf{not a straight line}: the fitted
+curve falls steeply across the low-poverty range and flattens beyond
+roughly 20\% poverty. Suburban districts cluster at the top left low
+poverty, high scores while rural districts, the most numerous group at
+163 of 300, spread across the full range. Community type is shown for
+context only; it is not a term in any model.
+
+Read as hypothetical districts, the curve says this. A district at 5\%
+poverty is predicted to score +0.38 standard deviations; at 15\%, -0.14;
+at 30\%, -0.47. The move from 5\% to 15\% is associated with a fall of
+about 0.52 standard deviations, while the \emph{larger} move from 15\%
+to 30\% is associated with only about 0.33. Ten points of poverty are
+worth roughly twice as much at the bottom of the range as fifteen points
+are at the top. That asymmetry is the descriptive finding, and it is why
+the poverty rate enters the model in logs: a straight line would force
+both moves to cost the same.
+
+\section{Appendix: specifications
+tried}\label{appendix-specifications-tried}
+
+\begin{longtable}[]{@{}llrr@{}}
+\caption{Three functional forms, tested on both variables where
+curvature was plausible. Higher R-squared and lower residual SE are
+better.}\tabularnewline
+\toprule\noalign{}
+Variable & Form & R-squared & Residual SE \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+Variable & Form & R-squared & Residual SE \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Poverty rate & Linear & 0.4481 & 0.2831 \\
+Poverty rate & Quadratic & 0.4834 & 0.2744 \\
+Poverty rate & Log & 0.4924 & 0.2715 \\
+Bachelor's+ share & Linear & 0.4592 & 0.2803 \\
+Bachelor's+ share & Quadratic & 0.4595 & 0.2807 \\
+Bachelor's+ share & Log & 0.4372 & 0.2859 \\
+\end{longtable}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.2743}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.7257}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Specification
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+What we learned
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Y on poverty rate, untransformed & Fits, but the residual pattern and
+the loess curve both show the straight line is wrong at the extremes. \\
+Y on poverty rate plus a squared term & Curvature is real and strongly
+significant, so the linear form is rejected. But a fitted parabola
+eventually turns and predicts higher scores at very high poverty. \\
+Y on log(poverty rate) & Best fit of the three, monotone across the
+whole range, and interpretable as diminishing returns. Adopted. \\
+Y on bachelor's share, log and squared variants & Neither improves on
+the linear form, so education enters untransformed. Curvature is not a
+general feature of these predictors. \\
+Y on all six socioeconomic measures & SNAP receipt flips sign and log
+income collapses. The measures are too collinear to interpret
+individually. \\
+Y on log(poverty), education, unemployment, single motherhood & Retains
+the explanatory power of the six-predictor model with variance inflation
+near or below three. Preferred specification. \\
+\end{longtable}
+}
+
+The comparison table above is the evidence for rows one to four: for
+poverty the log form fits best, while for the bachelor's-degree share
+the linear form already does, so only poverty is transformed.
+
+\begin{figure}
+\centering
+\pandocbounded{\includegraphics[keepaspectratio,alt={Residuals against fitted values for the proposed four-variable model. The local fit (orange) is close to flat with no funnelling, consistent with a correctly specified conditional mean and roughly constant error variance.}]{/Users/macandkash/Coding/dataci203-Final/datasci-203-26-section6-summer-C/notebooks/DATASCI-203-Final-Project_files/23cdb52cc3b312857a87738ba3b76051d3b268a7.pdf}}
+\caption{Residuals against fitted values for the proposed four-variable
+model. The local fit (orange) is close to flat with no funnelling,
+consistent with a correctly specified conditional mean and roughly
+constant error variance.}
+\end{figure}
+
+the residual plot below is the required residuals-versus-fitted plot for
+the preferred specification. The local fit is close to flat with no
+systematic curvature, which is consistent with a correctly specified
+conditional mean had the poverty rate been left on its raw scale, the
+curvature documented above would appear here as a parabolic band.
+
+\section{Model Building}\label{model-building}
+
+All model choices below are based only on the exploration data. We do
+not use the confirmation set until the very end, so none of the
+decisions will introduce bias in the final results.
+
+We fit three models. \textbf{Model 1} regresses test performance on the
+poverty rate alone, the simplest credible specification and the measure
+policy discussions lean on most. \textbf{Model 2} adds the other five
+socioeconomic factors, showing how much of poverty's apparent
+association survives conditioning. \textbf{Model 3} adds a squared
+poverty term to test whether the relationship bends at high poverty. All
+three report heteroskedasticity-consistent standard errors, since
+district-level data of this kind commonly has non-constant error
+variance.
+
+\begin{table}[!htbp] \centering 
+  \caption{Regression Results (Exploration Set)} 
+  \label{} 
+\small 
+\begin{tabular}{@{\extracolsep{5pt}}lccc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ & \multicolumn{3}{c}{\textit{Dependent variable:}} \\ 
+\cline{2-4} 
+\\[-1.8ex] & \multicolumn{3}{c}{Test Performance (SD units from national mean)} \\ 
+\\[-1.8ex] & (1) & (2) & (3)\\ 
+\hline \\[-1.8ex] 
+ Poverty Rate & $-$4.02$^{***}$ & $-$1.24$^{*}$ & $-$2.59$^{*}$ \\ 
+  & (0.29) & (0.57) & (1.18) \\ 
+  Poverty Rate Squared &  &  & 4.14 \\ 
+  &  &  & (3.09) \\ 
+  Log Median Income &  & 0.03 & $-$0.01 \\ 
+  &  & (0.12) & (0.12) \\ 
+  \% Bachelor's Degree+ &  & 1.30$^{***}$ & 1.26$^{***}$ \\ 
+  &  & (0.18) & (0.19) \\ 
+  Unemployment Rate &  & $-$2.30$^{*}$ & $-$2.38$^{*}$ \\ 
+  &  & (1.10) & (1.11) \\ 
+  \% SNAP Recipients &  & 0.20 & 0.14 \\ 
+  &  & (0.48) & (0.48) \\ 
+  \% Single-Mother Households &  & $-$1.19$^{***}$ & $-$1.23$^{***}$ \\ 
+  &  & (0.36) & (0.35) \\ 
+  Constant & 0.51$^{***}$ & $-$0.16 & 0.32 \\ 
+  & (0.04) & (1.27) & (1.32) \\ 
+ \hline \\[-1.8ex] 
+Observations & 300 & 300 & 300 \\ 
+R$^{2}$ & 0.45 & 0.63 & 0.63 \\ 
+Adjusted R$^{2}$ & 0.45 & 0.62 & 0.62 \\ 
+\hline 
+\hline \\[-1.8ex] 
+\textit{Note:}  & \multicolumn{3}{r}{$^{*}$p$<$0.05; $^{**}$p$<$0.01; $^{***}$p$<$0.001} \\ 
+\end{tabular} 
+\end{table}
+
+\subsection{Assumption checks}\label{assumption-checks}
+
+With 300 districts the large-sample model needs only IID sampling and a
+unique BLP, both of which the sampling design gives us directly. The
+supporting diagnostics agree: a studentized Breusch--Pagan test returns
+p = 0.285, giving no evidence of heteroskedasticity, and while
+Shapiro--Wilk rejects exact normality of the residuals (p = 0.0043) the
+excess kurtosis is only 1.23, which at this sample size does not
+threaten the asymptotic results. We report robust standard errors
+regardless. The residuals-versus-fitted plot for the preferred
+specification is Figure 2 in the appendix.
+
+\end{document}
