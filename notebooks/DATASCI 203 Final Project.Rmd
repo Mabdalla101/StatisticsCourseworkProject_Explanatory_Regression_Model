@@ -5,7 +5,12 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+# echo = FALSE hides the code itself; results, tables and figures still print.
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE
+)
 
 # This .Rmd lives in notebooks/, but all data paths below are written relative
 
@@ -94,15 +99,7 @@ nrow(seda_population_file_2018)
 
 # Sampling Methodology
 
-Data & Sampling
-
-Our data comes from the 2018 wave of the Stanford Education Data Archive (SEDA), a nationally comprehensive source that provides district-level academic performance and demographic information for public school districts across the United States. We work with the all-subgroups population file, which gives us one record per district, and restrict the frame to districts with positive enrollment and complete data on all variables we intend to analyze. That cleaning step leaves us with a well-defined population of districts before we draw a single observation.
-
-The variables we retain reflect the core question. Our outcome is each district's average test score composite. Our socioeconomic predictors — bachelor's degree attainment, poverty rate, unemployment, SNAP receipt, single-mother household share, and log median income — are kept as separate measures rather than collapsed into a single index, precisely because we want to understand which dimensions of socioeconomic status carry the most weight. We also retain total enrollment and race and ethnicity shares (white, Black, Hispanic, Asian, and Native American) as contextual controls.
-
-From that cleaned frame we draw a simple random sample of 1,000 districts without replacement. SRS is the right choice here because it satisfies the IID assumption directly: every district is selected independently and with equal probability, with no clustering or stratification introducing dependence into the sample. A fixed random seed ensures the draw is reproducible.
-
-We then immediately split the sample before conducting any analysis. Three hundred districts (30%) are assigned to an exploration set; the remaining 700 (70%) are held as a confirmation set. All variable selection, distributional checks, and collinearity diagnostics are carried out on the exploration set only. The confirmation set does not inform any modeling decisions — it is reserved entirely for final estimation. This discipline matters because allowing the same data to guide both specification and estimation inflates the risk of finding patterns that do not replicate. Before writing any output, five automated checks verify that the sample is correctly sized, contains no missing values on analysis variables, includes only districts with positive enrollment, has unique district identifiers throughout, and that the exploration and confirmation counts sum correctly to 1,000.
+From the 2018 SEDA, whose all-subgroups population file gives one record per U.S. public school district; we restrict the frame to districts with positive enrollment and complete data on the outcome (average test score composite), the six socioeconomic predictors, total enrollment, and the race and ethnicity shares. From that cleaned frame we draw a simple random sample of 1,000 districts without replacement under a fixed seed, which satisfies the IID assumption directly since every district is selected independently and with equal probability. We then split the sample before any analysis — 300 districts (30%) for exploration and 700 (70%) held for confirmation — so that variable selection and diagnostics never touch the data used for final estimation, and five automated checks verify sample size, missingness, positive enrollment, unique identifiers, and that the two splits sum to 1,000.  We used IID because we wanted to use the more interesting models from class.
 
 ``` {r sampling, message=FALSE, warning=FALSE, results='hide' }
 library(tidyverse)
@@ -192,8 +189,10 @@ SES_VARS <- c(
   single_momall = "Households headed by a single mother (%)"
 )
 
-SEDA_PALETTE <- c(City = "#0072B2", Suburb = "#E69F00",
-                  Town = "#009E73", Rural = "#CC79A7")
+SEDA_PALETTE <- c(
+  City = "#0072B2", Suburb = "#E69F00",
+  Town = "#009E73", Rural = "#CC79A7"
+)
 
 ## ggplot's default grey panel competes with the data for attention; a minimal
 ## theme keeps the ink on the points and the fitted line.
@@ -206,13 +205,14 @@ theme_set(theme_minimal(base_size = 10))
 locale_cols <- c(City = "urban", Suburb = "suburb", Town = "town", Rural = "rural")
 
 covariates_raw <- seda_cov %>% filter(year == 2018)
-achievement    <- achieve_2018
+achievement <- achieve_2018
 
 urbanicity_lookup <- covariates_raw %>%
   transmute(sedalea,
-            urbanicity = names(locale_cols)[
-              max.col(across(all_of(unname(locale_cols))), ties.method = "first")
-            ])
+    urbanicity = names(locale_cols)[
+      max.col(across(all_of(unname(locale_cols))), ties.method = "first")
+    ]
+  )
 
 ## THE line that the confirmation-set swap changes, and the only one.
 d <- sample_df %>%
@@ -228,20 +228,22 @@ locale_share_max <- apply(covariates_raw[unname(locale_cols)], 1, max)
 ## Provenance tally, rebuilt from the Data Prep and Sampling chunks so the
 ## dropped-observations table is generated rather than transcribed.
 n_matched <- nrow(inner_join(select(achieve_2018, sedalea),
-                             select(cov_2018, sedalea), by = "sedalea"))
+  select(cov_2018, sedalea),
+  by = "sedalea"
+))
 
 drop_log <- tibble::tribble(
   ~step, ~n_in, ~n_out, ~reason,
   "Achievement rows to district rows", nrow(seda_achieve), nrow(achieve_2018),
-    "Kept subcat/subgroup 'all' and gap == 0. The other rows are subgroup means and subgroup gaps, not district means. A reshape, not a data loss.",
+  "Kept subcat/subgroup 'all' and gap == 0. The other rows are subgroup means and subgroup gaps, not district means. A reshape, not a data loss.",
   "Covariate districts to matched districts", nrow(covariates_raw), n_matched,
-    "Districts with covariates but no 2018 achievement estimate. SEDA suppresses districts with too few tested students.",
+  "Districts with covariates but no 2018 achievement estimate. SEDA suppresses districts with too few tested students.",
   "Matched districts to complete records", n_matched, nrow(seda_population_file_2018),
-    "Missing one or more socioeconomic covariates (listwise deletion).",
+  "Missing one or more socioeconomic covariates (listwise deletion).",
   "Frame to analysis sample", nrow(frame_clean), nrow(sample_df),
-    "Simple random sample without replacement, set.seed(42).",
+  "Simple random sample without replacement, set.seed(42).",
   "Analysis sample to exploration set", nrow(sample_df), nrow(d),
-    "Confirmation set held out; not opened until final estimation."
+  "Confirmation set held out; not opened until final estimation."
 )
 
 stopifnot(nrow(d) == 300, !any(is.na(d$urbanicity)), "log_poverty" %in% names(d))
@@ -271,29 +273,35 @@ SEDA offers two candidate outcome columns. We use `cs_mn_avg_ol` (the ordinary l
 y <- d$cs_mn_avg_ol
 
 y_stats <- tibble(
- Statistic = c("Districts", "Distinct values", "Districts within 0.05 of the minimum",
- "Districts within 0.05 of the maximum",
- "Mean", "SD", "Min", "25th pct", "Median",
- "75th pct", "Max", "Skewness", "Kurtosis"),
- Value = c(
- nrow(d), n_distinct(y),
- sum(y < min(y) + 0.05), sum(y > max(y) - 0.05),
- mean(y), sd(y), min(y),
- quantile(y, .25), median(y), quantile(y, .75), max(y),
- skewness(y), kurtosis(y)
- ),
- Reference = c("--",
- sprintf("%d if no ties", nrow(d)),
- "high value = floor effect", "high value = ceiling effect",
- "--", "--", "--", "--", "--", "--", "--",
- "0 if symmetric", "3 if normal")
+  Statistic = c(
+    "Districts", "Distinct values", "Districts within 0.05 of the minimum",
+    "Districts within 0.05 of the maximum",
+    "Mean", "SD", "Min", "25th pct", "Median",
+    "75th pct", "Max", "Skewness", "Kurtosis"
+  ),
+  Value = c(
+    nrow(d), n_distinct(y),
+    sum(y < min(y) + 0.05), sum(y > max(y) - 0.05),
+    mean(y), sd(y), min(y),
+    quantile(y, .25), median(y), quantile(y, .75), max(y),
+    skewness(y), kurtosis(y)
+  ),
+  Reference = c(
+    "--",
+    sprintf("%d if no ties", nrow(d)),
+    "high value = floor effect", "high value = ceiling effect",
+    "--", "--", "--", "--", "--", "--", "--",
+    "0 if symmetric", "3 if normal"
+  )
 ) %>%
- # Build Value as character up front: the count wants no decimals, the rest
- # want three. Doing this inside if_else() would format the whole numeric
- # column first and print the count as 300.000000000.
- # The first four rows are counts and want no decimals; the rest want three.
- mutate(Value = c(format(Value[1:4], big.mark = ","),
- sprintf("%.3f", Value[-(1:4)])))
+  # Build Value as character up front: the count wants no decimals, the rest
+  # want three. Doing this inside if_else() would format the whole numeric
+  # column first and print the count as 300.000000000.
+  # The first four rows are counts and want no decimals; the rest want three.
+  mutate(Value = c(
+    format(Value[1:4], big.mark = ","),
+    sprintf("%.3f", Value[-(1:4)])
+  ))
 
 kable(y_stats, align = "lrl")
 ```
@@ -312,23 +320,23 @@ That choice has a cost, and it is worth quantifying rather than glossing.
 ## PURPOSE: Quantify how much the predictors inflate each other's variance when entered together.
 m_all <- lm(reformulate(names(SES_VARS), "cs_mn_avg_ol"), data = d)
 tibble(Variable = SES_VARS[names(vif(m_all))], VIF = as.numeric(vif(m_all))) %>%
- arrange(desc(VIF)) %>%
- kable(digits = 2, caption = "Variance inflation factors, all six predictors entered together.")
+  arrange(desc(VIF)) %>%
+  kable(digits = 2, caption = "Variance inflation factors, all six predictors entered together.")
 ```
 
 ```{r collinearity-flip, fig.cap="What collinearity does to two of the predictors. Each is shown fitted alone, then fitted alongside the other five. A coefficient that changes sign between the two columns is not measuring a stable relationship."}
 ## PURPOSE: Show what collinearity does: fit two predictors alone, then alongside the rest.
 map_dfr(c("snapall", "lninc50all"), function(v) {
- alone <- lm(reformulate(v, "cs_mn_avg_ol"), data = d)
- tibble(
- Predictor = SES_VARS[v],
- `Slope alone` = coef(alone)[2],
- `p-value alone` = summary(alone)$coefficients[2, 4],
- `Slope with all 6` = coef(m_all)[v],
- `p-value with all 6` = summary(m_all)$coefficients[v, 4]
- )
+  alone <- lm(reformulate(v, "cs_mn_avg_ol"), data = d)
+  tibble(
+    Predictor = SES_VARS[v],
+    `Slope alone` = coef(alone)[2],
+    `p-value alone` = summary(alone)$coefficients[2, 4],
+    `Slope with all 6` = coef(m_all)[v],
+    `p-value with all 6` = summary(m_all)$coefficients[v, 4]
+  )
 }) %>%
- kable(digits = 3, align = "lrrrr")
+  kable(digits = 3, align = "lrrrr")
 ```
 
 The six measures overlap heavily poverty correlates with SNAP receipt at `r round(cor(d$povertyall, d$snapall), 2)` and with log income at `r round(cor(d$povertyall, d$lninc50all), 2)`. The variance inflation factors show the consequence, and the second table makes it concrete: SNAP receipt and log income are both strong, highly significant predictors on their own, but entered alongside the other four SNAP **flips sign** and loses all significance while income collapses toward zero.
@@ -342,15 +350,15 @@ Neither variable has stopped mattering; each has been absorbed by its correlates
 ## Not hand-typed: this is the tally accumulated by log_step() as the cleaning section ran,
 ## so the table cannot drift out of sync with the pipeline that produced the data.
 drop_log %>%
- transmute(
- Step = step,
- `Rows in` = n_in,
- `Rows out` = n_out,
- Dropped = n_in - n_out,
- `%` = round(100 * (n_in - n_out) / n_in, 1),
- Reason = reason
- ) %>%
- kable(caption = "Observations removed at each stage of the pipeline, with reasons. Generated by the cleaning code, not transcribed.")
+  transmute(
+    Step = step,
+    `Rows in` = n_in,
+    `Rows out` = n_out,
+    Dropped = n_in - n_out,
+    `%` = round(100 * (n_in - n_out) / n_in, 1),
+    Reason = reason
+  ) %>%
+  kable(caption = "Observations removed at each stage of the pipeline, with reasons. Generated by the cleaning code, not transcribed.")
 ```
 
 ```{r suppressed-n}
@@ -365,56 +373,57 @@ Because SEDA still publishes covariates for the suppressed districts, we can che
 ```{r missingness-check, fig.cap="Suppressed vs. retained districts, compared on the covariates SEDA publishes for both. Enrolment is reported as a median because it is heavily right-skewed; the rest are means."}
 ## PURPOSE: Compare suppressed districts against retained ones, to test whether the loss is random.
 kept_flag <- covariates_raw %>%
- mutate(Status = if_else(sedalea %in% achievement$sedalea,
- "Retained", "Suppressed"))
+  mutate(Status = if_else(sedalea %in% achievement$sedalea,
+    "Retained", "Suppressed"
+  ))
 
 bind_rows(
- kept_flag %>%
- group_by(Status) %>%
- summarise(
- Measure = "Districts",
- Value = as.character(n()), .groups = "drop"
- ),
- kept_flag %>%
- group_by(Status) %>%
- summarise(
- Measure = "Median enrolment",
- Value = format(round(median(totenrl, na.rm = TRUE)), big.mark = ","),
- .groups = "drop"
- ),
- kept_flag %>%
- group_by(Status) %>%
- summarise(
- Measure = "25th percentile of enrolment",
- Value = format(round(quantile(totenrl, .25, na.rm = TRUE)), big.mark = ","),
- .groups = "drop"
- ),
- kept_flag %>%
- group_by(Status) %>%
- summarise(
- Measure = "Mean poverty rate",
- Value = sprintf("%.1f%%", 100 * mean(povertyall, na.rm = TRUE)),
- .groups = "drop"
- ),
- kept_flag %>%
- group_by(Status) %>%
- summarise(
- Measure = "Mean bachelor's+ share",
- Value = sprintf("%.1f%%", 100 * mean(baplusall, na.rm = TRUE)),
- .groups = "drop"
- ),
- kept_flag %>%
- group_by(Status) %>%
- summarise(
- Measure = "Share rural",
- Value = sprintf("%.1f%%", 100 * mean(
- max.col(across(all_of(unname(locale_cols))), ties.method = "first") == 4
- )),
- .groups = "drop"
- )
+  kept_flag %>%
+    group_by(Status) %>%
+    summarise(
+      Measure = "Districts",
+      Value = as.character(n()), .groups = "drop"
+    ),
+  kept_flag %>%
+    group_by(Status) %>%
+    summarise(
+      Measure = "Median enrolment",
+      Value = format(round(median(totenrl, na.rm = TRUE)), big.mark = ","),
+      .groups = "drop"
+    ),
+  kept_flag %>%
+    group_by(Status) %>%
+    summarise(
+      Measure = "25th percentile of enrolment",
+      Value = format(round(quantile(totenrl, .25, na.rm = TRUE)), big.mark = ","),
+      .groups = "drop"
+    ),
+  kept_flag %>%
+    group_by(Status) %>%
+    summarise(
+      Measure = "Mean poverty rate",
+      Value = sprintf("%.1f%%", 100 * mean(povertyall, na.rm = TRUE)),
+      .groups = "drop"
+    ),
+  kept_flag %>%
+    group_by(Status) %>%
+    summarise(
+      Measure = "Mean bachelor's+ share",
+      Value = sprintf("%.1f%%", 100 * mean(baplusall, na.rm = TRUE)),
+      .groups = "drop"
+    ),
+  kept_flag %>%
+    group_by(Status) %>%
+    summarise(
+      Measure = "Share rural",
+      Value = sprintf("%.1f%%", 100 * mean(
+        max.col(across(all_of(unname(locale_cols))), ties.method = "first") == 4
+      )),
+      .groups = "drop"
+    )
 ) %>%
- pivot_wider(names_from = Status, values_from = Value) %>%
- kable(align = "lrr")
+  pivot_wider(names_from = Status, values_from = Value) %>%
+  kable(align = "lrr")
 ```
 
 This corrects an assumption it would have been easy to make. The suppressed districts are genuinely smaller markedly so at the lower quartile and somewhat more rural. But they are **not** poorer or less educated; on both measures they look slightly better off than the districts retained. The scope condition is therefore narrower than a vague caveat would suggest: **our results describe districts large enough for SEDA to publish a score**, and what is missing is very small, somewhat rural districts rather than a systematically disadvantaged tail.
@@ -426,26 +435,30 @@ This is the report's central exhibit: the outcome plotted against the single pre
 ```{r fig-main, fig.cap="District poverty and average test performance, 300 randomly sampled U.S. school districts, 2018. Each point is one district. The solid line is the fitted relationship from a model of test score on log poverty rate; the shaded band is its 95% confidence interval. Districts are coloured by community type. The relationship is steep among low-poverty districts and flattens as poverty rises.", fig.width=6.5, fig.height=4.2}
 ## PURPOSE: The report's headline figure: outcome against poverty with fitted predictions overlaid.
 pred_grid <- tibble(povertyall = seq(min(d$povertyall), max(d$povertyall), length.out = 200)) %>%
- mutate(log_poverty = log(povertyall))
+  mutate(log_poverty = log(povertyall))
 pred <- bind_cols(pred_grid, as_tibble(predict(m_log, pred_grid, interval = "confidence")))
 
 ggplot(d, aes(povertyall, cs_mn_avg_ol)) +
- geom_hline(yintercept = 0, colour = "grey75", linewidth = .4) +
- geom_point(aes(colour = urbanicity), alpha = .7, size = 1.5) +
- geom_ribbon(data = pred, aes(y = fit, ymin = lwr, ymax = upr),
- fill = "grey40", alpha = .18) +
- geom_line(data = pred, aes(y = fit), colour = "grey15", linewidth = .9) +
- scale_colour_manual(values = SEDA_PALETTE, name = "Community type") +
- scale_x_continuous(labels = scales::percent, breaks = scales::pretty_breaks(6)) +
- labs(
- x = "Share of district households below the poverty line",
- y = "Average test score\n(standard deviations from the national average)",
- title = "Poorer districts score lower, but the penalty flattens at high poverty",
- subtitle = "Each point is one U.S. public school district; the grey line is the fitted log-poverty model"
- ) +
- theme(legend.position = "bottom",
- plot.title = element_text(face = "bold"),
- panel.grid.minor = element_blank())
+  geom_hline(yintercept = 0, colour = "grey75", linewidth = .4) +
+  geom_point(aes(colour = urbanicity), alpha = .7, size = 1.5) +
+  geom_ribbon(
+    data = pred, aes(y = fit, ymin = lwr, ymax = upr),
+    fill = "grey40", alpha = .18
+  ) +
+  geom_line(data = pred, aes(y = fit), colour = "grey15", linewidth = .9) +
+  scale_colour_manual(values = SEDA_PALETTE, name = "Community type") +
+  scale_x_continuous(labels = scales::percent, breaks = scales::pretty_breaks(6)) +
+  labs(
+    x = "Share of district households below the poverty line",
+    y = "Average test score\n(standard deviations from the national average)",
+    title = "Poorer districts score lower, but the penalty flattens at high poverty",
+    subtitle = "Each point is one U.S. public school district; the grey line is the fitted log-poverty model"
+  ) +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(face = "bold"),
+    panel.grid.minor = element_blank()
+  )
 ```
 
 the figure below displays all `r nrow(d)` sampled districts. The relationship is strongly negative but plainly **not a straight line**: the fitted curve falls steeply across the low-poverty range and flattens beyond roughly 20% poverty. Suburban districts cluster at the top left low poverty, high scores while rural districts, the most numerous group at `r sum(d$urbanicity == "Rural")` of `r nrow(d)`, spread across the full range. Community type is shown for context only; it is not a term in any model.
@@ -453,13 +466,13 @@ the figure below displays all `r nrow(d)` sampled districts. The relationship is
 ```{r hypothetical-districts, fig.cap="Hypothetical districts: predicted mean test score at selected poverty rates, from the log-poverty model. The final column is the cost of getting to that row from the one above it."}
 ## PURPOSE: Translate the fitted model into predicted scores for specific poverty rates.
 hyp <- tibble(`Poverty rate` = c(0.05, 0.10, 0.15, 0.20, 0.30)) %>%
- mutate(
- log_poverty = log(`Poverty rate`),
- `Predicted score` = as.numeric(predict(m_log, tibble(log_poverty = log_poverty))),
- `Change from row above` = `Predicted score` - lag(`Predicted score`),
- `Poverty rate` = sprintf("%.0f%%", 100 * `Poverty rate`)
- ) %>%
- select(-log_poverty)
+  mutate(
+    log_poverty = log(`Poverty rate`),
+    `Predicted score` = as.numeric(predict(m_log, tibble(log_poverty = log_poverty))),
+    `Change from row above` = `Predicted score` - lag(`Predicted score`),
+    `Poverty rate` = sprintf("%.0f%%", 100 * `Poverty rate`)
+  ) %>%
+  select(-log_poverty)
 
 hyp %>% kable(digits = 2, align = "lrr")
 ```
@@ -474,51 +487,55 @@ That asymmetry is the descriptive finding, and it is why the poverty rate enters
 ## PURPOSE: Compare linear, quadratic and log forms for the two predictors where curvature is plausible.
 
 bind_rows(
- tibble(
- Variable = "Poverty rate",
- Form = c("Linear", "Quadratic", "Log"),
- `R-squared` = c(summary(m_lin)$r.squared, summary(m_quad)$r.squared,
- summary(m_log)$r.squared),
- `Residual SE` = c(sigma(m_lin), sigma(m_quad), sigma(m_log))
- ),
- tibble(
- Variable = "Bachelor's+ share",
- Form = c("Linear", "Quadratic", "Log"),
- `R-squared` = c(
- summary(lm(cs_mn_avg_ol ~ baplusall, d))$r.squared,
- summary(lm(cs_mn_avg_ol ~ baplusall + I(baplusall^2), d))$r.squared,
- summary(lm(cs_mn_avg_ol ~ log(baplusall), d))$r.squared
- ),
- `Residual SE` = c(
- sigma(lm(cs_mn_avg_ol ~ baplusall, d)),
- sigma(lm(cs_mn_avg_ol ~ baplusall + I(baplusall^2), d)),
- sigma(lm(cs_mn_avg_ol ~ log(baplusall), d))
- )
- )
+  tibble(
+    Variable = "Poverty rate",
+    Form = c("Linear", "Quadratic", "Log"),
+    `R-squared` = c(
+      summary(m_lin)$r.squared, summary(m_quad)$r.squared,
+      summary(m_log)$r.squared
+    ),
+    `Residual SE` = c(sigma(m_lin), sigma(m_quad), sigma(m_log))
+  ),
+  tibble(
+    Variable = "Bachelor's+ share",
+    Form = c("Linear", "Quadratic", "Log"),
+    `R-squared` = c(
+      summary(lm(cs_mn_avg_ol ~ baplusall, d))$r.squared,
+      summary(lm(cs_mn_avg_ol ~ baplusall + I(baplusall^2), d))$r.squared,
+      summary(lm(cs_mn_avg_ol ~ log(baplusall), d))$r.squared
+    ),
+    `Residual SE` = c(
+      sigma(lm(cs_mn_avg_ol ~ baplusall, d)),
+      sigma(lm(cs_mn_avg_ol ~ baplusall + I(baplusall^2), d)),
+      sigma(lm(cs_mn_avg_ol ~ log(baplusall), d))
+    )
+  )
 ) %>%
- kable(digits = 4, align = "llrr",
- caption = "Three functional forms, tested on both variables where curvature was plausible. Higher R-squared and lower residual SE are better.")
+  kable(
+    digits = 4, align = "llrr",
+    caption = "Three functional forms, tested on both variables where curvature was plausible. Higher R-squared and lower residual SE are better."
+  )
 ```
 
 ```{r spec-list}
 ## PURPOSE: The appendix's required list of specifications tried, each with what
 ## it taught us. Kept as a table so nothing is claimed without a reason.
 tribble(
- ~Specification, ~"What we learned",
- "Y on poverty rate, untransformed",
- "Fits, but the residual pattern and the loess curve both show the straight line is wrong at the extremes.",
- "Y on poverty rate plus a squared term",
- "Curvature is real and strongly significant, so the linear form is rejected. But a fitted parabola eventually turns and predicts higher scores at very high poverty.",
- "Y on log(poverty rate)",
- "Best fit of the three, monotone across the whole range, and interpretable as diminishing returns. Adopted.",
- "Y on bachelor's share, log and squared variants",
- "Neither improves on the linear form, so education enters untransformed. Curvature is not a general feature of these predictors.",
- "Y on all six socioeconomic measures",
- "SNAP receipt flips sign and log income collapses. The measures are too collinear to interpret individually.",
- "Y on log(poverty), education, unemployment, single motherhood",
- "Retains the explanatory power of the six-predictor model with variance inflation near or below three. Preferred specification."
+  ~Specification, ~"What we learned",
+  "Y on poverty rate, untransformed",
+  "Fits, but the residual pattern and the loess curve both show the straight line is wrong at the extremes.",
+  "Y on poverty rate plus a squared term",
+  "Curvature is real and strongly significant, so the linear form is rejected. But a fitted parabola eventually turns and predicts higher scores at very high poverty.",
+  "Y on log(poverty rate)",
+  "Best fit of the three, monotone across the whole range, and interpretable as diminishing returns. Adopted.",
+  "Y on bachelor's share, log and squared variants",
+  "Neither improves on the linear form, so education enters untransformed. Curvature is not a general feature of these predictors.",
+  "Y on all six socioeconomic measures",
+  "SNAP receipt flips sign and log income collapses. The measures are too collinear to interpret individually.",
+  "Y on log(poverty), education, unemployment, single motherhood",
+  "Retains the explanatory power of the six-predictor model with variance inflation near or below three. Preferred specification."
 ) %>%
- kable(align = "ll")
+  kable(align = "ll")
 ```
 
 The comparison table above is the evidence for rows one to four: for poverty the log form fits best, while for the bachelor's-degree share the linear form already does, so only poverty is transformed.
@@ -527,7 +544,8 @@ The comparison table above is the evidence for rows one to four: for poverty the
 ## PURPOSE: Fit the preferred specification so the required residuals-vs-fitted
 ## plot below diagnoses the model actually being proposed.
 m_final <- lm(cs_mn_avg_ol ~ log_poverty + baplusall + unempall + single_momall,
- data = d)
+  data = d
+)
 ```
 
 ```{r fig-resid, fig.cap="Residuals against fitted values for the proposed four-variable model. The local fit (orange) is close to flat with no funnelling, consistent with a correctly specified conditional mean and roughly constant error variance.", fig.width=6.5, fig.height=2.8}
@@ -535,16 +553,18 @@ m_final <- lm(cs_mn_avg_ol ~ log_poverty + baplusall + unempall + single_momall,
 diag_df <- tibble(fitted = fitted(m_final), resid = resid(m_final))
 
 p_rf <- ggplot(diag_df, aes(fitted, resid)) +
- geom_hline(yintercept = 0, colour = "grey60") +
- geom_point(alpha = .4, size = 1, colour = "#0072B2") +
- geom_smooth(method = "loess", se = FALSE, colour = "#D55E00", linewidth = .8, span = .9) +
- labs(x = "Fitted value", y = "Residual", title = "Residuals vs. fitted")
+  geom_hline(yintercept = 0, colour = "grey60") +
+  geom_point(alpha = .4, size = 1, colour = "#0072B2") +
+  geom_smooth(method = "loess", se = FALSE, colour = "#D55E00", linewidth = .8, span = .9) +
+  labs(x = "Fitted value", y = "Residual", title = "Residuals vs. fitted")
 
 p_sl <- ggplot(diag_df, aes(fitted, sqrt(abs(resid)))) +
- geom_point(alpha = .4, size = 1, colour = "#0072B2") +
- geom_smooth(method = "loess", se = FALSE, colour = "#D55E00", linewidth = .8, span = .9) +
- labs(x = "Fitted value", y = expression(sqrt(abs(residual))),
- title = "Scale--location (variance check)")
+  geom_point(alpha = .4, size = 1, colour = "#0072B2") +
+  geom_smooth(method = "loess", se = FALSE, colour = "#D55E00", linewidth = .8, span = .9) +
+  labs(
+    x = "Fitted value", y = expression(sqrt(abs(residual))),
+    title = "Scale--location (variance check)"
+  )
 
 p_rf + p_sl
 ```
