@@ -554,53 +554,53 @@ the residual plot below is the required residuals-versus-fitted plot for the pre
 
 # Model Building
 
-All specification decisions below are made on the exploration set only. The
-confirmation set created in the sampling chunk above is left untouched until
-final estimation, so nothing we learn here can leak into the reported results.
-
-We fit three nested specifications. Model 1 regresses test performance on the
-poverty rate alone, giving a baseline for the single socioeconomic measure most
-often cited in policy discussion. Model 2 adds the remaining five socioeconomic
-predictors, which lets us see how much of the poverty association is shared with
-income, educational attainment, employment, SNAP receipt, and family structure.
-Model 3 adds a squared poverty term to test whether the relationship bends at
-higher poverty levels rather than holding to a constant slope.
-
-Because district-level socioeconomic data of this kind routinely shows
-non-constant error variance, all standard errors are heteroskedasticity-robust
-(HC sandwich estimator) rather than classical.
+All model choices below are based only on the exploration data. We do not use the confirmation set until the very end, so none of the decisions will introduce bias in the final results.
 
 ```{r modeling-setup, message=FALSE, warning=FALSE}
 library(lmtest)
 library(sandwich)
 library(stargazer)
 
-# sample_df and its exploration/confirmation split come from the sampling chunk
-# above. stargazer needs a plain data.frame, not a tibble, or it can throw
-# "missing value where TRUE/FALSE needed" during table formatting.
+# Filter sample_df down to just the rows tagged "exploration" converts from a tibble to a plain data frame for stargazer
 explore <- as.data.frame(sample_df %>% filter(split == "exploration"))
+
+# Quick check to show how many districts ended up in the exploration set
 cat(sprintf("Exploration set: %d districts\n", nrow(explore)))
 ```
 
+We also create three unique models 
+
+Model 1 showcases a comparision between test scores vs. poverty rate only. Consider this our starting point because poverty is the measure most used in policy discussions
+  
+Model 2 will add the other five factors (income, education, employment, SNAP, family structure); This shows us how much of poverty's impacts on its own then with the other factors
+
+Model 3 adds a squared poverty term so that we can check if the relationship between the two is a straight line or curves at high levels of poverty
+
+We use robust standard errors instead of regular ones since this type of district-level data commonly has uneven variance.
+
 ```{r modeling-fit}
+# Model 1: starting poing; poverty rate only with no controls
 m1 <- lm(cs_mn_avg_ol ~ povertyall, data = explore)
 
+# Model 2: full socioeconomic set that add other factors
 m2 <- lm(cs_mn_avg_ol ~ povertyall + lninc50all + baplusall +
   unempall + snapall + single_momall, data = explore)
 
+# Model 3: nonlinearity check adds squared poverty term to test whether the poverty-test score relationship bends at high poverty levels
 m3 <- lm(cs_mn_avg_ol ~ povertyall + I(povertyall^2) + lninc50all +
   baplusall + unempall + snapall + single_momall, data = explore)
 
-# Heteroskedasticity-robust standard errors
+# District-level socioeconomic data often has non-constant error variance, so we compute HC (heteroskedasticity-consistent)
 robust_se <- function(model) sqrt(diag(vcovHC(model)))
 ```
 
+This chunk builds the side-by-side regression table comparing for model 1,2,and 3.
+
 ```{r modeling-table, results='asis', echo=FALSE}
-# stargazer emits its table verbatim (results='asis'), so it bypasses pandoc's
-# escaping. A bare "%" in a label would start a LaTeX comment and silently
-# swallow the rest of that table row, so escape it for latex output.
+# Set pct to "%" for PDF/LaTeX output, or "%" for HTML output
 pct <- if (isTRUE(knitr::is_latex_output())) "\\%" else "%"
 
+# Builds the regression comparision table with robust SEs substituted in for all three
 stargazer(m1, m2, m3,
   header = FALSE,
   title = "Regression Results (Exploration Set)",
@@ -616,4 +616,30 @@ stargazer(m1, m2, m3,
   omit.stat = c("f", "ser"),
   star.cutoffs = c(0.05, 0.01, 0.001)
 )
+```
+
+# Model Assumption checks
+
+```{r testing2}
+# numeric <- sample_df|> select(where(is.numeric))
+# cor(numeric)
+m4 <- lm(cs_mn_avg_ol ~ povertyall +
+  baplusall + unempall + snapall + single_momall, data = explore)
+residuals <- residuals(m4)
+lmtest::bptest(m4)
+
+residuals <- residuals(m4)
+
+kurtosis(residuals) - 3
+shapiro.test(residuals)
+
+hist(residuals, breaks = 15, freq = FALSE, main = "Residuals")
+curve(dnorm(x, mean(residuals), sd(residuals)),
+  add = TRUE, col = "green", lwd = 2
+)
+
+par(mfrow = c(2, 2))
+plot(m4)
+
+coeftest(m4, vcov = vcovHC(m4))
 ```
