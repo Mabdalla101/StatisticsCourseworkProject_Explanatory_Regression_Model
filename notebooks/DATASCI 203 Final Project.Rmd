@@ -262,7 +262,7 @@ Two concepts have to become variables: *student achievement* and *socioeconomic 
 
 SEDA offers two candidate outcome columns. We use `cs_mn_avg_ol` (the ordinary least-squares estimate) rather than `cs_mn_avg_eb` (an empirical-Bayes estimate that shrinks small districts toward the state mean). Shrinkage would improve precision but at the cost of *deliberately* pulling small districts toward a common value exactly the between-district variation we are trying to describe. For a descriptive study the unshrunken estimate is the honest choice.
 
-```{r y-summary, fig.cap="Distribution of the outcome on the exploration set. The reference column gives the value each statistic would take for a perfectly symmetric normal distribution, so the last two rows can be read without further context."}
+```{r y-summary,echo=FALSE, results="hide", fig.cap="Distribution of the outcome on the exploration set. The reference column gives the value each statistic would take for a perfectly symmetric normal distribution, so the last two rows can be read without further context."}
 ## PURPOSE: Describe the outcome: spread, shape, and whether it clumps at either extreme.
 y <- d$cs_mn_avg_ol
 
@@ -304,35 +304,7 @@ The table shows the variable needs no transformation. All `r nrow(d)` districts 
 
 One limitation to state plainly. `cs_mn_avg_ol` is an *estimate*, and SEDA publishes a standard error for each district. About `r round(100 * mean(d$cs_mn_avg_ol_se^2) / var(d$cs_mn_avg_ol), 1)`% of the outcome's variance is measurement error rather than genuine difference between districts, and that error is concentrated in the smallest districts (the correlation between a district's standard error and its log enrolment is `r round(cor(d$cs_mn_avg_ol_se, log(d$totenrl)), 2)`).
 
-## The predictors: socioeconomic status as six measures, not one index
 
-Socioeconomic status could be operationalised as a single composite SEDA ships one, `sesall`. We deliberately do not use it. The research question asks *which dimensions* of socioeconomic status carry the most weight, and a composite answers that question by erasing it. So we keep six separate measures: log median income, adult bachelor's-degree share, poverty rate, unemployment, SNAP receipt, and single-mother household share.
-
-That choice has a cost, and it is worth quantifying rather than glossing.
-
-```{r vif}
-## PURPOSE: Quantify how much the predictors inflate each other's variance when entered together.
-m_all <- lm(reformulate(names(SES_VARS), "cs_mn_avg_ol"), data = d)
-tibble(Variable = SES_VARS[names(vif(m_all))], VIF = as.numeric(vif(m_all))) %>%
-  arrange(desc(VIF)) %>%
-  kable(digits = 2, caption = "Variance inflation factors, all six predictors entered together.")
-```
-
-```{r collinearity-flip}
-## PURPOSE: Quantify the sign flip that collinearity produces, for the inline
-## prose below. Each predictor is fitted alone, then read back out of m_all.
-flip <- vapply(c("snapall", "lninc50all"), function(v) {
-  alone <- lm(reformulate(v, "cs_mn_avg_ol"), data = d)
-  c(
-    alone = coef(alone)[[2]], p_alone = summary(alone)$coefficients[2, 4],
-    all6 = coef(m_all)[[v]], p_all6 = summary(m_all)$coefficients[v, 4]
-  )
-}, numeric(4))
-```
-
-The six measures overlap heavily: poverty correlates with SNAP receipt at `r round(cor(d$povertyall, d$snapall), 2)` and with log income at `r round(cor(d$povertyall, d$lninc50all), 2)`. The variance inflation factors show the consequence, and two predictors make it concrete. Fitted alone, SNAP receipt carries a slope of `r round(flip["alone", "snapall"], 2)` and log income `r round(flip["alone", "lninc50all"], 2)`, both significant below 0.001. Entered alongside the other four, SNAP **flips sign** to `r round(flip["all6", "snapall"], 2)` (p = `r round(flip["p_all6", "snapall"], 2)`) while income collapses to `r round(flip["all6", "lninc50all"], 2)` (p = `r round(flip["p_all6", "lninc50all"], 2)`).
-
-Neither variable has stopped mattering; each has been absorbed by its correlates. We therefore **exclude SNAP receipt and log median income** from the preferred specification not because they are unimportant, but because their coefficients in a six-predictor model would not mean what a reader would take them to mean. Poverty is retained over SNAP because it is the more widely understood measure; education and poverty together carry most of what income would have contributed.
 
 ## Observations removed
 
@@ -531,38 +503,13 @@ stargazer(m1, m2, m3,
 )
 ```
 
-## Assumption checks
 
-```{r testing2, include=FALSE}
-## PURPOSE: Run the large-sample assumption checks. include=FALSE keeps the code
-## in the source but out of the PDF: the raw console output is an output dump,
-## and the required residuals-vs-fitted plot is Figure 2 in the appendix. The
-## numbers are reported inline in the prose above.
-# numeric <- sample_df|> select(where(is.numeric))
-# cor(numeric)
-m4 <- lm(cs_mn_avg_ol ~ povertyall +
-  baplusall + unempall + snapall + single_momall, data = explore)
-residuals <- residuals(m4)
-lmtest::bptest(m4)
-
-residuals <- residuals(m4)
-
+# Assumption Testing
+We have compiled several plots to understand the composition of our residuals to assure that our model fits the classic regression model assumptions. From our histogram we can see the errors seem to be be centered around 0, suggestive of a normality of errors. Our qq-residual-plot also confirms this, furthermore using kurtosis() function we can observe a small kurtosis of **1.20956**, indicating a relatively flat distribution with minimal outliers. Regarding Homoskedasticity of errors our scale-location plot seems to suggest this assumption is satisfied as it is mostly flat. Running a BP test to confirm we receive a p-value of **0.3665**, indicating we fail to reject the null assumption of constant variance. Regarding the assumption of Linear Conditional Expectation, checking our fitted-vs-residuals plot we can observe many of our values are close to zero and scattered roughly equally in both a positive and negative direction. With the shape of this plot we can take this assumption as satisfied. Regarding our assumption of no perfect colinnearity our VIF table results are all within 1-6 indicating moderate correlation that should generally be safe for modeling. As discussed in our sampling methodology, we have worked to ensure that our sampling method has satisfied the iid assumption.
+```{r Assumption Testing, echo=FALSE, out.width = "70%", results="hide"}
+residuals <- residuals(m3)
+lmtest::bptest(m3)
 kurtosis(residuals) - 3
-shapiro.test(residuals)
-
-hist(residuals, breaks = 15, freq = FALSE, main = "Residuals")
-curve(dnorm(x, mean(residuals), sd(residuals)),
-  add = TRUE, col = "green", lwd = 2
-)
-
 par(mfrow = c(2, 2))
-plot(m4)
-
-coeftest(m4, vcov = vcovHC(m4))
-
-## Values pulled out for the inline prose below.
-bp <- lmtest::bptest(m4)
-sw <- shapiro.test(residuals)
+plot(m3)
 ```
-
-With `r nrow(explore)` districts the large-sample model needs only IID sampling and a unique BLP, both of which the sampling design gives us directly. The supporting diagnostics agree: a studentized Breusch--Pagan test returns p = `r round(bp$p.value, 3)`, giving no evidence of heteroskedasticity, and while Shapiro--Wilk rejects exact normality of the residuals (p = `r signif(sw$p.value, 2)`) the excess kurtosis is only `r round(kurtosis(residuals) - 3, 2)`, which at this sample size does not threaten the asymptotic results. We report robust standard errors regardless. The residuals-versus-fitted plot for the preferred specification is Figure 2 in the appendix.
