@@ -1,4 +1,16 @@
-# Lab 2: Socioeconomic Factors and School Test Scores
+# Explanation of Report
+
+This is a final group project I submitted as part of my Masters in Data Science at UC Berkeley (MIDS) during my Statistics classwork. In terms of contributions to the project: I pitched the idea, sourced the data using the open-source Stanford Education Data Archive (SEDA), worked on the data prep/operationalization/intro as well as the model assumptions testing and collaborated with my colleagues on the Model (primarily done by Miram as well as Jayant). We had Kashif work primarily on the sampling methodology as well as assist on modeling/repo setup/advice, and Jayant contributed heavily on the EDA, providing a detailed analysis/backing on why the predictors we chose work and assisted with visualizations as well. The project is essentially an explanatory model looking to understand the relationship between socioeconomic status and state test scores for students grades 3-8. The link between socioeconomic status and state test scores is already well established and broadly known, we hoped to make a paper that breaks this down into more granular detail such that we can have a better understanding of which predictors exactly (poverty rate per district, avg % of college graduates, % single mothers) contribute the most to test scores. After all was said and done we developed a regression model w/ an R-Squared of 56%, with our model explaining 56% of the variation in state test scores. Our assumption testing suite was quite comprehensive and we didn't see much cause for concern there. Overall, it was a fun project where my team and I got to dive deep and learn a lot about the importance of public policy in education by testing these assumptions ourselves. Feel free to give it a read and contact me if you'd like any more details or have any questions!
+
+Our final R markdown file for our report is under our final project report.rmd file (in case you'd like to test our code yourselves!) and the final outputted pdf for the report can be found under the final-project.pdf file.
+
+Thanks!
+
+Mohammed
+
+
+
+## Lab 2: Socioeconomic Factors and School Test Scores
 
 DATASCI 203 - Description Using Models
 
